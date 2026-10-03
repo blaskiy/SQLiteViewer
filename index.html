@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="description" content="sqlite file viewer">
+    <meta name="keywords" content="sqlite,viewer,db,database,online">
+    <meta name="author" content="Juraj Novák">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SQLite Viewer</title>
+    <meta name="theme-color" content="#0f2a43">
+    <link href="style.css" rel="stylesheet">
+    <link rel="icon" type="image/png" href="img/icon.png"/>
+    <meta property="og:type" content="website">
+    <meta property="og:title" content="SQLite Viewer">
+    <meta property="og:description" content="sqlite file viewer">
+</head>
+<body>
+
+<div id="main-container" class="container workspace">
+    <header id="header">
+        <img src="img/logo.svg" width="46" height="46" alt="SQLite Viewer logo"/>
+        <div class="brand">
+            <h4>SQLite Viewer</h4>
+            <p>Open and query SQLite files in your browser</p>
+        </div>
+        <div class="header-actions">
+            <button type="button" class="btn btn-ghost" id="open-file" onclick="dropzoneClick()"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7a2 2 0 0 1 2-2h4l2 2h6a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2z"/></svg> Open file</button>
+            <div class="dropdown" id="export-menu">
+                <button class="btn btn-ghost dropdown-toggle" type="button" id="dropdownMenu1" data-bs-toggle="dropdown" aria-expanded="false">Export</button>
+                <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="dropdownMenu1">
+                    <li><a class="dropdown-item" href="#" onclick="exportAllToCsv()">All tables to CSV</a></li>
+                    <li><a class="dropdown-item" href="#" onclick="exportSelectedTableToCsv()">Selected table to CSV</a></li>
+                    <li><a class="dropdown-item" href="#" onclick="exportQueryTableToCsv()">Query result to CSV</a></li>
+                </ul>
+            </div>
+            <a href="#" id="resizer" aria-label="Expand/Collapse" class="text-decoration-none">
+                <svg id="resizer-expand" xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 4h5v5M9 20H4v-5M20 4l-6.5 6.5M4 20l6.5-6.5"/></svg>
+                <svg id="resizer-collapse" class="collapse" xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 9h-5V4M4 15h5v5M15 9l6-6M9 15l-6 6"/></svg>
+            </a>
+        </div>
+    </header>
+
+    <div id="compat-error" class="alert alert-danger rounded-0 d-none" role="alert">
+        Sorry but your browser does not support some of new HTML5 features! Try using latest version of Google Chrome or Firefox.
+    </div>
+
+    <div class="text-center align-items-stretch" id="dropzone" onclick="dropzoneClick(this)">
+        <div class="d-flex border rounded-1 align-items-center justify-content-center">
+            <div id="drop-text">
+                <b>Drop a database here</b><br/>or click to choose a file.
+                <div class="nouploadinfo small mb-3">Nothing is uploaded: the file is read in your browser.</div>
+                <a id="sample-db-link" class="no-propagate small text-decoration-none" href="examples/Chinook_Sqlite.sqlite">Download a sample database</a>
+            </div>
+            <div id="drop-loading" class="d-flex align-items-center d-none">
+                <div class="spinner-border me-2" role="status"><span class="visually-hidden">Loading...</span></div>
+                <b>Processing file...</b>
+            </div>
+        </div>
+    </div>
+
+    <div id="output-box">
+        <div class="layout">
+            <aside id="sidebar" aria-label="Tables">
+                <div class="side-head"><h5>Tables</h5><span id="table-count" class="pill">0</span></div>
+                <input id="table-filter" type="search" class="form-control" placeholder="Filter tables" aria-label="Filter tables" autocomplete="off">
+                <ul id="table-list"></ul>
+                <select id="tables" class="form-select" title="Table"></select>
+            </aside>
+
+            <section id="pane">
+                <div class="editor-panel">
+                    <div id="sql-editor" class="form-control"></div>
+                    <div class="editor-bar">
+                        <span class="hint"><kbd>Ctrl</kbd> + <kbd>Enter</kbd> to run</span>
+                        <button class="btn btn-primary" id="sql-run" type="submit" onclick="executeSql(this)">Run query</button>
+                    </div>
+                </div>
+
+                <div class="alert alert-danger" id="error" style="display: none"></div>
+                <div class="alert alert-info" id="info" style="display: none"></div>
+
+                <div class="results">
+                    <div class="overflow-x-auto">
+                        <table id="data" class="table table-sm table-hover">
+                            <thead><tr></tr></thead>
+                            <tbody></tbody>
+                        </table>
+                    </div>
+                    <div class="results-foot">
+                        <button type="button" class="btn btn-outline-secondary btn-sm" onclick="exportSelectedTableToCsv()">Export table</button>
+                        <div id="bottom-bar" class="d-none">
+                            <button class="btn btn-outline-secondary btn-sm lh-1" id="page-prev" type="submit" onclick="setPage(this, false)" aria-label="Previous page"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m14.5 6-6 6 6 6"/></svg></button>
+                            <a href="javascript:void(0)" data-bs-toggle="tooltip" class="text-decoration-none" onclick="setPage(this)" id="pager"></a>
+                            <button class="btn btn-outline-secondary btn-sm lh-1" id="page-next" type="submit" onclick="setPage(this, true)" aria-label="Next page"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9.5 6 6 6-6 6"/></svg></button>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </div>
+    </div>
+</div>
+
+<footer class="col text-center text-secondary py-2 my-1 small" id="footer">
+    <a href="https://github.com/blaskiy" class="text-decoration-none"> blaskiy dev</a><br>
+    <small>| <a href="https://github.com/blaskiy/SQLiteViewer" class="text-decoration-none link-opacity-75">Fork me on GitHub</a> |</small>
+</footer>
+
+<input type="file" id="dropzone-dialog" style="opacity: 0;display:none">
+
+<script src="script.js"></script>
+</body>
+</html>
