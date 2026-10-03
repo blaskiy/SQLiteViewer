@@ -1,4 +1,4 @@
-SQLite Viewer
+SQLite Viewer https://blaskiy.github.io/SQLiteViewer/
 ============
 
 *View SQLite files in the browser. Nothing is uploaded: everything runs locally with [sql.js](https://github.com/sql-js/sql.js).*
